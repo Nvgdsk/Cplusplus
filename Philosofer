@@ -1,0 +1,114 @@
+// ConsoleApplication1.cpp: определяет точку входа для консольного приложения.
+//
+
+#include "stdafx.h"
+#include <iostream>
+#include <thread>
+#include <list>
+#include <vector>
+#include <memory>
+#include <chrono>
+#include "windows.h"
+#include <random>
+#include <ctime>
+using namespace std;
+CRITICAL_SECTION output;
+vector <HANDLE> Philosophers;
+vector <HANDLE> fork;
+DWORD WINAPI process(LPVOID lpParam)
+{
+	srand(time(NULL));
+	int* j = (int*)lpParam;
+	int num = *j;
+	
+	while (true) {
+		Sleep(rand() % 1000);
+		if (WaitForSingleObject(fork.at(num), 0)) {
+			SetEvent(fork.at(num));
+			EnterCriticalSection(&output);
+			cout << "Philosopher[" << num + 1 << "] took [ left] fork" << endl;
+			LeaveCriticalSection(&output);
+			if (num + 1 == fork.size())
+			{
+				if (WaitForSingleObject(fork.at(0), 0)) {
+					SetEvent(fork.at(0));
+					EnterCriticalSection(&output);
+					cout << "Philosopher[" << num + 1 << "] took [right]fork" << endl;
+					cout << "Philosopher[" << num + 1 << "]had done" << endl;
+					LeaveCriticalSection(&output);
+					ResetEvent(fork.at(num));
+					EnterCriticalSection(&output);
+					cout << "Philosopher[" << num + 1 << "] put [left]fork" << endl;
+					LeaveCriticalSection(&output);
+					ResetEvent(fork.at(0));
+					EnterCriticalSection(&output);
+					cout << "Philosopher[" << num + 1 << "] put [right]fork" << endl;
+					LeaveCriticalSection(&output);
+
+				}
+				else {
+					ResetEvent(fork.at(num));
+					EnterCriticalSection(&output);
+					cout << "Philosopher[" << num + 1 << "] put [left]fork" << endl;
+					LeaveCriticalSection(&output);
+
+				}
+			}
+			else
+			{
+				if (WaitForSingleObject(fork.at(num + 1), 0)) {
+					SetEvent(fork.at(num + 1));
+					EnterCriticalSection(&output);
+					cout << "Philosopher[" << num + 1 << "] took [right]fork" << endl;
+					cout << "Philosopher[" << num + 1 << "]had done" << endl;
+					LeaveCriticalSection(&output);
+					ResetEvent(fork.at(num));
+					EnterCriticalSection(&output);
+					cout << "Philosopher[" << num + 1 << "] put [left]fork" << endl;
+					LeaveCriticalSection(&output);
+
+					ResetEvent(fork.at(num + 1));
+					EnterCriticalSection(&output);
+					cout << "Philosopher[" << num + 1 << "] put [right]fork" << endl;
+					LeaveCriticalSection(&output);
+
+				}
+				else
+				{
+					ResetEvent(fork.at(num));
+					EnterCriticalSection(&output);
+					cout << "Philosopher[" << num + 1 << "] put [left]fork" << endl;
+					LeaveCriticalSection(&output);
+
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+int main()
+{
+	InitializeCriticalSection(&output);
+	cout << "Input count of philosopher:";
+	int N;
+	cin >> N;
+	
+	for (int i = 0; i < N; i++)
+	{
+		fork.emplace_back(CreateEvent(NULL, TRUE, FALSE, NULL));
+		int* j = new int;
+		*j = i;
+		Philosophers.emplace_back(CreateThread(NULL,0, process ,j,CREATE_SUSPENDED,NULL));
+		
+	}
+	for (int i = 0; i < N; i++)
+	{
+		ResumeThread(Philosophers.at(i));
+
+	}
+	getchar(); getchar();
+    return 0;
+}
+
